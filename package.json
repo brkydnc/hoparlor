@@ -1,0 +1,16 @@
+{
+  "name": "hoparlor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node signaling/index.js"
+  },
+  "author": "Berkay Dinç",
+  "license": "ISC",
+  "dependencies": {
+    "uuid": "^9.0.0",
+    "ws": "^8.9.0"
+  }
+}
