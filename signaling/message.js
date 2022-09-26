@@ -22,18 +22,6 @@ class Message {
     isInvalid() {
         return this.kind == MessageKind.INVALID;
     }
-
-    isOffer() {
-        return this.kind == MessageKind.OFFER;
-    }
-
-    isAnswer() {
-        return this.kind == MessageKind.ANSWER;
-    }
-
-    isCandidate() {
-        return this.kind == MessageKind.CANDIDATE;
-    }
 }
 
 export class ReceiverMessage extends Message {
