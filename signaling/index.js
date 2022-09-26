@@ -31,6 +31,8 @@ wss.on('connection', (ws, req) => {
 
                 if (message.isInvalid()) return;
 
+                console.log("[broadcaster]:", message);
+
                 for (const receiver of wss.clients.values()) {
                     if (receiver.id === message.receiver) {
                         receiver.send(message.toReceiverMessage().stringify());
@@ -47,6 +49,8 @@ wss.on('connection', (ws, req) => {
             const message = ReceiverMessage.parse(data);
 
             if (message.isInvalid()) return;
+
+            console.log("[receiver]:", message);
 
             broadcaster.send(message.toBroadcasterMessage(ws.id).stringify());
         });
