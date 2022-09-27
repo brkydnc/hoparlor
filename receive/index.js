@@ -10,7 +10,7 @@ const configuration = {
     ],
 };
 
-const video = document.querySelector('video');
+const audio = document.querySelector('audio');
 
 const signaling = {
     channel: new WebSocket(`ws://${window.location.hostname}:8080`),
@@ -22,7 +22,7 @@ const signaling = {
 const peerConnection = new RTCPeerConnection(configuration);
 
 peerConnection.addEventListener('track', event => {
-    video.srcObject = new MediaStream([event.track]);
+    audio.srcObject = new MediaStream([event.track]);
 });
 
 peerConnection.addEventListener('icecandidate', event => {
@@ -32,9 +32,13 @@ peerConnection.addEventListener('icecandidate', event => {
 });
 
 signaling.channel.addEventListener('open', async event => {
-    const offer = await peerConnection.createOffer({
-        offerToReceiveAudio: true
-    });
+    const context = new AudioContext();
+    const destination = context.createMediaStreamDestination();
+    const track = destination.stream.getTracks()[0];
+
+    peerConnection.addTrack(track);
+
+    const offer = await peerConnection.createOffer();
 
     await peerConnection.setLocalDescription(offer);
 
