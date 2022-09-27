@@ -39,7 +39,7 @@ signaling.channel.addEventListener('open', async event => {
     peerConnection.addTrack(track);
 
     const offer = await peerConnection.createOffer();
-
+    offer.sdp = offer.sdp.replace('useinbandfec=1', 'useinbandfec=1; stereo=1; maxaveragebitrate=510000; maxplaybackrate=510000');
     await peerConnection.setLocalDescription(offer);
 
     signaling.sendMessage(MessageKind.OFFER, offer);

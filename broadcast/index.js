@@ -12,6 +12,7 @@ const configuration = {
 
 const constraints = {
     video: true,
+    audio: true,
     audio: {
         sampleRate: 48000,
         sampleSize: 32,
@@ -68,6 +69,7 @@ signaling.channel.addEventListener('message', async event => {
 
         await peerConnection.setRemoteDescription(message.payload);
         const answer = await peerConnection.createAnswer();
+        answer.sdp = answer.sdp.replace('useinbandfec=1', 'useinbandfec=1; stereo=1; maxaveragebitrate=510000; maxplaybackrate=510000');
         await peerConnection.setLocalDescription(answer);
 
         signaling.sendMessage(MessageKind.ANSWER, message.receiver, answer);
