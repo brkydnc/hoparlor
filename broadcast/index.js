@@ -12,7 +12,6 @@ const configuration = {
 
 const constraints = {
     video: true,
-    audio: true,
     audio: {
         sampleRate: 48000,
         sampleSize: 32,
@@ -27,7 +26,7 @@ const constraints = {
 // TODO: Drop closed connections.
 const peers = new Map();
 const signaling = {
-    channel: new WebSocket('ws://0.0.0.0:8080/?broadcast=true'),
+    channel: new WebSocket(`ws://${window.location.hostname}:8080/?broadcast=true`),
     sendMessage: function(kind, receiver, payload) {
         this.channel.send(JSON.stringify({ kind, payload, receiver }));
     }
