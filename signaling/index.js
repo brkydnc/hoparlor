@@ -2,57 +2,85 @@ import { WebSocketServer } from 'ws';
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import { ReceiverMessage, BroadcasterMessage } from './message.js';
+import pino from 'pino';
+import express from 'express';
 
-const wss = new WebSocketServer({ port: 8080 });
-let broadcaster;
+const transport = pino.transport({
+  target: 'pino-pretty',
+  // Logs are printed to stderr
+  options: { destination: 2 }
+})
 
-wss.on('connection', (ws, req) => {
-    // Attach every client an id.
-    ws.id = uuid();
+const logger = pino({ level: "debug" }, transport);
 
-    // Parse URL params.
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const isBroadcastRequest = url.searchParams.get('broadcast') === 'true';
+let broadcaster = null;
+const socketServer = new WebSocketServer({ port: 8080 });
 
-    // Determine whether the client wants to broadcast.
-    if (isBroadcastRequest) {
-        // Allow only one active broadcasting client.
-        if (broadcaster) {
-            ws.terminate()
-        } else {
-            broadcaster = ws;
+socketServer.on('listening', () => {
+  const { port } = socketServer.address();
+  logger.info(`Socket server is listening at port ${port}`);
+})
 
-            ws.on('close', () => {
-                broadcaster = null;
-            });
+socketServer.on('connection', (socket, req) => {
+  socket.id = uuid();
+  logger.debug(`Client connected with id ${socket.id}`);
 
-            ws.on('message', data => {
-                const message = BroadcasterMessage.parse(data);
+  // Parse URL params.
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const isBroadcastRequest = url.searchParams.get('broadcast') === 'true';
 
-                if (message.isInvalid()) return;
+  if (isBroadcastRequest) {
+    broadcaster = prepareBroadcaster(socket)
+  } else {
+    prepareReceiver(socket);
+  }
+});
 
-                console.log("[broadcaster]:", message);
+function prepareReceiver(socket) {
+  socket.on("message", data => {
+    if (!broadcaster) return;
 
-                for (const receiver of wss.clients.values()) {
-                    if (receiver.id === message.receiver) {
-                        receiver.send(message.toReceiverMessage().stringify());
-                        break;
-                    }
-                }
-            });
-        }
-    } else {
-        ws.on("message", data => {
-            // Ignore messages until a client starts broadcasting.
-            if (!broadcaster) return;
+    const message = ReceiverMessage.parse(data);
 
-            const message = ReceiverMessage.parse(data);
+    if (message.isInvalid()) return;
 
-            if (message.isInvalid()) return;
+    logger.debug(`Receiver ${socket.id} received a message`);
 
-            console.log("[receiver]:", message);
+    broadcaster.send(message.toBroadcasterMessage(socket.id).stringify());
+  });
 
-            broadcaster.send(message.toBroadcasterMessage(ws.id).stringify());
-        });
+  return socket;
+}
+
+function prepareBroadcaster(socket) {
+  socket.on('close', () => {
+    if (broadcaster.id === socket.id) broadcaster = null;
+  });
+
+  socket.on('message', data => {
+    const message = BroadcasterMessage.parse(data);
+
+    if (message.isInvalid()) return;
+
+    logger.debug(`Broadcaster ${socket.id} received a message`);
+
+    for (const receiver of socketServer.clients.values()) {
+      if (receiver.id === message.receiver) {
+        receiver.send(message.toReceiverMessage().stringify());
+        break;
+      }
     }
+  });
+
+  return socket;
+}
+
+const app = express();
+
+app.use('/broadcast', express.static('broadcast'));
+app.use('/receive', express.static('receive'));
+
+const expressServer = app.listen(8081, function () {
+  const { port } = expressServer.address();
+  logger.info(`Express server is listening at port ${port}`);
 });
